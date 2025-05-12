@@ -1,3 +1,9 @@
+# If you're reading this, congratulations! You've just stumbled upon my first working script—yes, it's messy, yes, it's imperfect, 
+# but hey, I'm learning. If you spot something that looks broken, it's probably intentional (just kidding, I’m still figuring things out). 
+# But remember, if it ain't broke, don't fix it... unless it’s really broken, then feel free to fix it... eventually.
+# And hey, if you have any suggestions, I'm all ears—I'm always ready to improve, just as soon as I figure out how this all works!
+# Thanks for checking it out. I hope it does *something* useful for you.
+
 import os
 import sys
 import shutil
@@ -32,7 +38,6 @@ def ensure_xdg_open_installed():
         except subprocess.CalledProcessError as e:
             print("Failed to install xdg-utils. Error:", e)
             sys.exit(1)
-
 
 def ensure_basic_utilities():
     try:
@@ -239,21 +244,20 @@ def detect_geant4_version(source_dir):
     else:
         return None
 
-
 def get_latest_geant4_version():
     headers = {
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
         "Referer": "https://geant4.web.cern.ch/"
     }
-    
+
     try:
         response = requests.get("https://gitlab.cern.ch/geant4/geant4/-/tags", headers=headers)
         response.raise_for_status()
-        
+
         matches = re.findall(r'v(\d+\.\d+(?:\.\d+)?)', response.text)
         versions = sorted(set(matches), key=lambda x: list(map(int, x.split("."))), reverse=True)
-        
+
         if not versions:
             print_error("Could not detect Geant4 versions.")
             sys.exit(1)
@@ -273,7 +277,6 @@ def get_latest_geant4_version():
     except requests.exceptions.RequestException as e:
         print_error(f"Failed to retrieve Geant4 versions: {e}")
         sys.exit(1)
-
 
 def install_packages(distro, geant_version):
     distro_lower = distro.lower()
@@ -370,8 +373,6 @@ def add_versioned_alias(version, install_path):
 
     print_success(f"Alias '{alias_name}' added to ~/.bashrc")
 
-
-
 def install_geant4():
     os_type, distro = detect_os()
     if os_type == "Windows":
@@ -426,7 +427,6 @@ def install_geant4():
     install_path = os.path.join(script_dir, "Geant4", f"geant4-v{version}-install")
     print_info(f"Install path: {install_path}")
 
-
     instructions = f"""
 [INSTRUCTIONS]
 1. After CMake opens, you'll see: EMPTY CACHE
@@ -471,7 +471,6 @@ def install_geant4():
 
     run_command(f"ccmake ../{src_dir}", "Running CMake", interactive=True)
 
-
     input("Press Enter after completing CMake configuration to continue...")
     cores = get_cpu_cores()
     run_command(f"make -j{cores}", "Compiling Geant4")
@@ -493,31 +492,35 @@ def install_geant4():
 
     choice = input("Do you want to build and run Example B1 to verify installation? (y/n): ").strip().lower()
     if choice == 'y':
-        b1_example_path = os.path.join(install_path, "share", "Geant4", "examples", "basic", "B1")
-        build_path = os.path.join(b1_example_path, "build")
+        geant4_examples_path = os.path.join(install_path, "share", "Geant4", "examples", "basic", "B1")
+        user_example_path = os.path.expanduser("~/geant4-example-B1")
+        build_path = os.path.join(user_example_path, "build")
         geant4_cmake_dir = os.path.join(install_path, "lib", "cmake", "Geant4")
+        geant4_env_script = os.path.join(install_path, "bin", "geant4.sh")
 
         try:
+            # Copy example B1 to home directory
+            print_info("Copying Example B1 to a writable directory...")
+            if os.path.exists(user_example_path):
+                shutil.rmtree(user_example_path)
+            shutil.copytree(geant4_examples_path, user_example_path)
+
             os.makedirs(build_path, exist_ok=True)
             os.chdir(build_path)
 
-            if not os.path.exists(geant4_cmake_dir):
-                raise FileNotFoundError(f"Geant4 CMake directory not found: {geant4_cmake_dir}")
-
+            # Run cmake and make
             cmake_command = f"cmake -DGeant4_DIR={geant4_cmake_dir} .."
             run_command(cmake_command, "Configuring Example B1")
-            run_command(f"sudo make -j{cores}", "Building Example B1")
+            run_command(f"make -j{cores}", "Building Example B1")
 
+            # Run the example with environment sourced
             print_info("Running Example B1...")
-            subprocess.run(["./exampleB1"], check=True)
+            subprocess.run(f"bash -c 'source {geant4_env_script} && ./exampleB1'", shell=True, check=True)
             print_success("Example B1 ran successfully. Geant4 is working.")
         except Exception as e:
             print_error(f"Failed during Example B1 verification: {e}")
     else:
         print_success("Installation completed. You can manually test Geant4 later.")
-
-
-
 
 if __name__ == "__main__":
     install_geant4()
