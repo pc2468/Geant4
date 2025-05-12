@@ -7,25 +7,23 @@ Yeah, me too. So I wrote a script.
 This project gives you a simple way to build and install Geant4 on any major Linux system — even WSL on Windows. No manual downloading, no guesswork. Just copy a few commands into your terminal and let it handle the rest.
 
 ---
-##Prerequisites
-Before you run the script, ensure you have the following:  
+## Two Ways to Install Geant4
+**1. Easy Automated Way (Recommended)**  
+The easiest way to install Geant4 is by running a single command. This method will automatically take care of all dependencies, download the installation script, and set everything up for you.  
+Just run the following command in your terminal:
+```bash
+bash -c "$(curl -fsSL https://github.com/pc2468/Geant4/raw/main/install_geant4.sh)"
+```
+What Happens When You Run the Command:
+- This command will handle everything! It checks if you have Python3 and Git installed. If not, it installs them automatically.
+- It clones the Geant4 repo from GitHub: It downloads all the files needed for the installation, including the `geant4_install.py` script.
+- The script is then executed: It will guide you through the installation process, from downloading the Geant4 source to building and setting it up on your system.
 
-**Python 3: Check if you have Python 3 installed by running**
-```bash
-python3 --version
-```
-If you don't have Python 3 installed, you can install it by following the [official Python installation guide.](https://www.python.org/downloads/)  
+No more fiddling around with dependencies and CMake flags. This method is like a one-click installer!
 
-**Git: To clone the repository, you'll need Git. Check if it's installed**
-```bash
-git --version
-```
-If not, you can install Git by running:
-```bash
-sudo apt install git  # For Ubuntu/Debian-based systems
-sudo yum install git  # For Fedora/RHEL-based systems
-sudo pacman -Sy git   # For Arch-based systems (I use arch btw)
-```
+**2. Manual Installation (Optional)**
+If you prefer to install Geant4 manually or want more control over the process, you can follow the instructions in the [Geant4 Manual Installation Guide](https://github.com/pc2468/Geant4/raw/main/geant4_manual_install.pdf).  
+This guide will walk you through the entire process step-by-step, including manually cloning the repository, installing dependencies, and building Geant4 from source.
 
 ## What You'll Do — and What Happens
 
@@ -47,38 +45,33 @@ sudo pacman -Sy git   # For Arch-based systems (I use arch btw)
 
 ## Quick Start — Step-by-Step
 
-You don’t need to download anything manually. Just open a terminal and follow these steps:
+You don’t need to download anything manually. Just open a terminal and follow these steps:  
 
-**1. Clone this repository from GitHub**  
-This pulls down everything — the script, guide, and screenshots — into a folder named `Geant4`.
-
+**1. Run the One-Line Command**  
+Instead of cloning the repo manually, just run this one-line command in your terminal:
 ```bash
-git clone https://github.com/pc2468/Geant4
+bash -c "$(curl -fsSL https://github.com/pc2468/Geant4/raw/main/install_geant4.sh)"
 ```
+What’s Happening Here?
+- `curl -fsSL`: This fetches the script from GitHub. It’s like getting a file from the internet.
+-  `bash -c`: This runs the file (or script) we just downloaded.
+The script will handle everything for you — from checking if Python3 is installed, to ensuring Git is present, and then setting up Geant4.
 
-**2. Move into that folder**
+**2. Answer a Few Questions**  
+Once the script runs, you'll be prompted with a few simple questions to help guide the installation. Just follow the on-screen instructions, and you'll be good to go!
 
-```bash
-cd Geant4
-```
+**3. Wait for the Magic**  
+The script will take care of:
+- Installing required software packages
+- Downloading the Geant4 source
+- Configuring and building Geant4 using CMake
+- Installing Geant4 and setting up the environment for you  
 
-**3.Check if the installer script is there**
-```bash
-ls
-```
-You should see a file named geant4_install.py. This is the script you'll run.
-
-**4. Run the installer**
-```bash
-python3 geant4_install.py
-```
-This will launch the automated setup. Just follow the prompts.
-That’s it. The script will take care of the rest.
-
+It will even set up a shortcut so you can use Geant4 immediately after installation. You’ll see messages on your screen letting you know what’s happening — it’s like watching a cooking show, except the computer does the hard work.
 
 ## What It Looks Like
 
-Here’s what you’ll see as the script runs:
+Here’s a sneak peek of what you’ll see as the script runs:
 
 | Step | Screenshot |
 |------|------------|
@@ -95,7 +88,7 @@ If you run into any issues during installation, here are a few things to check:
 - Missing dependencies: The script tries to install all necessary dependencies. If you see a missing package error, check your internet connection or manually install missing packages using your system’s package manager.
 - Permission issues: If you encounter permission errors, try running the script with `sudo` for elevated privileges:
 ```bash
-sudo python3 geant4_install.py
+sudo bash -c "$(curl -fsSL https://github.com/pc2468/Geant4/raw/main/install_geant4.sh)"
 ```
 - CMake errors: If something goes wrong during the CMake configuration, make sure you’ve followed the prompts carefully and ensured all dependencies were installed.
 
@@ -107,7 +100,7 @@ If you have any questions, issues, or suggestions, feel free to:
 
 - **Open an issue** on the [GitHub repository](https://github.com/pc2468/Geant4/issues)
 - **Leave a comment** on any relevant GitHub page
-- **Email me directly** at [your_email@example.com](mailto:changdeprathamesh@gmail.com)
+- **Email me directly** at [changdeprathamesh@gmail.com](mailto:changdeprathamesh@gmail.com)
 
 I’ll do my best to get back to you as quickly as possible.
 
