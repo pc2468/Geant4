@@ -1,3 +1,5 @@
+#!/bin/bash
+
 is_installed() {
   dpkg-query -l "$1" &>/dev/null || rpm -q "$1" &>/dev/null || pacman -Qs "$1" &>/dev/null
 }
@@ -50,6 +52,8 @@ echo "Cloning the Geant4 repository..."
 git clone https://github.com/pc2468/Geant4.git
 
 cd Geant4 || exit
+
+chmod +x install_geant4.sh
 
 echo "Running Geant4 installation script..."
 python3 geant4_install.py
