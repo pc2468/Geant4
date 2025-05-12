@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Function to check if a package is installed
 is_installed() {
   dpkg-query -l "$1" &>/dev/null || rpm -q "$1" &>/dev/null || pacman -Qs "$1" &>/dev/null
 }
