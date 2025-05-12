@@ -8,6 +8,16 @@ import re
 import requests
 from urllib.parse import urljoin
 
+def check_and_fix_permissions(path):
+    if not os.access(path, os.W_OK):
+        print(f"Write permission denied for {path}. Trying to change ownership...")
+        try:
+            subprocess.check_call(["sudo", "chown", "-R", f"{os.getenv('USER')}:{os.getenv('USER')}", path])
+            print(f"Ownership of {path} successfully changed.")
+        except subprocess.CalledProcessError:
+            print(f"Failed to change ownership of {path}. Please ensure you have the correct permissions.")
+            sys.exit(1)
+
 def ensure_xdg_open_installed():
     if shutil.which("xdg-open") is None:
         print("xdg-open not found. Installing xdg-utils...")
@@ -25,7 +35,6 @@ def ensure_xdg_open_installed():
 
 
 def ensure_basic_utilities():
-    """Ensure colorama and lsb-release are installed."""
     try:
         from colorama import Fore, Style, init
     except ImportError:
@@ -70,7 +79,7 @@ print_action = lambda msg: print_message("ACTION REQUIRED", Fore.MAGENTA, msg)
 
 def run_command(command, description="", interactive=False, silent=False):
     if not silent:
-        print_info(f"{description}...")
+        print_info(f"Running command: {command} ({description})")
 
     try:
         if interactive:
@@ -83,11 +92,12 @@ def run_command(command, description="", interactive=False, silent=False):
                 stderr=subprocess.STDOUT,
                 text=True,
                 encoding="utf-8",
-                errors="replace"   # 🛠️ This ignores bad bytes
+                errors="replace"
             )
             for line in process.stdout:
                 if not silent:
                     print(line, end='')
+
             process.wait()
             if process.returncode != 0:
                 raise subprocess.CalledProcessError(process.returncode, command)
@@ -98,7 +108,9 @@ def run_command(command, description="", interactive=False, silent=False):
     except subprocess.CalledProcessError as e:
         if not silent:
             print_error(f"{description} failed: {e}")
+        print_error(f"Command output: {e.output}")
         return e.returncode
+
 def is_wsl():
     return "microsoft" in platform.uname().release.lower()
 
@@ -150,7 +162,6 @@ def get_cpu_cores():
             pass
         print_warning("Invalid input. Try again.")
 
-
 def install_packages(distro):
     distro_lower = distro.lower()
 
@@ -192,6 +203,7 @@ def check_dependencies():
             print_warning("Continuing despite missing dependencies.")
     else:
         print_success("All required dependencies are present.")
+
 def prompt(message):
     if args.non_interactive or args.yes_to_all:
         return 'c'
@@ -340,9 +352,6 @@ def install_packages(distro, geant_version):
 
     run_command(pkg_cmd, "Installing dependencies", interactive=True)
 
-
-
-
 def verify_geant4_install(install_path):
     geant4_config = os.path.join(install_path, "bin", "geant4-config")
     if os.path.exists(geant4_config):
@@ -430,7 +439,7 @@ def install_geant4():
        {install_path}
      Press Enter again. If it updates from /usr/local, it's set.
 
-Turn ON (ideal settings):
+3. Turn ON (ideal settings):
    - GEANT4_INSTALL_DATA
    - GEANT4_USE_OPENGL_X11
    - GEANT4_USE_QT
@@ -486,7 +495,7 @@ Turn ON (ideal settings):
     if choice == 'y':
         b1_example_path = os.path.join(install_path, "share", "Geant4", "examples", "basic", "B1")
         build_path = os.path.join(b1_example_path, "build")
-        geant4_cmake_dir = os.path.join(install_path, "lib", "Geant4-11.3.2")
+        geant4_cmake_dir = os.path.join(install_path, "lib", "cmake", "Geant4")
 
         try:
             os.makedirs(build_path, exist_ok=True)
@@ -497,7 +506,7 @@ Turn ON (ideal settings):
 
             cmake_command = f"cmake -DGeant4_DIR={geant4_cmake_dir} .."
             run_command(cmake_command, "Configuring Example B1")
-            run_command(f"make -j{cores}", "Building Example B1")
+            run_command(f"sudo make -j{cores}", "Building Example B1")
 
             print_info("Running Example B1...")
             subprocess.run(["./exampleB1"], check=True)
