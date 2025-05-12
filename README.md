@@ -12,7 +12,7 @@ This project gives you a simple way to build and install Geant4 on any major Lin
 The easiest way to install Geant4 is by running a single command. This method will automatically take care of all dependencies, download the installation script, and set everything up for you.  
 Just run the following command in your terminal:
 ```bash
-bash -c "$(curl -fsSL https://github.com/pc2468/Geant4/raw/main/install_geant4.sh)"
+bash -c "$(curl -fsSL https://github.com/pc2468/Geant4/raw/main/geant4_install.sh)"
 ```
 What Happens When You Run the Command:
 - This command will handle everything! It checks if you have Python3 and Git installed. If not, it installs them automatically.
@@ -50,7 +50,7 @@ You don’t need to download anything manually. Just open a terminal and follow 
 **1. Run the One-Line Command**  
 Instead of cloning the repo manually, just run this one-line command in your terminal:
 ```bash
-bash -c "$(curl -fsSL https://github.com/pc2468/Geant4/raw/main/install_geant4.sh)"
+bash -c "$(curl -fsSL https://github.com/pc2468/Geant4/raw/main/geant4_install.sh)"
 ```
 What’s Happening Here?
 - `curl -fsSL`: This fetches the script from GitHub. It’s like getting a file from the internet.
@@ -88,7 +88,7 @@ If you run into any issues during installation, here are a few things to check:
 - Missing dependencies: The script tries to install all necessary dependencies. If you see a missing package error, check your internet connection or manually install missing packages using your system’s package manager.
 - Permission issues: If you encounter permission errors, try running the script with `sudo` for elevated privileges:
 ```bash
-sudo bash -c "$(curl -fsSL https://github.com/pc2468/Geant4/raw/main/install_geant4.sh)"
+sudo bash -c "$(curl -fsSL https://github.com/pc2468/Geant4/raw/main/geant4_install.sh)"
 ```
 - CMake errors: If something goes wrong during the CMake configuration, make sure you’ve followed the prompts carefully and ensured all dependencies were installed.
 
