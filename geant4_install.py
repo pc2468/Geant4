@@ -119,39 +119,40 @@ def run_command(command, description="", interactive=False, silent=False):
 def is_wsl():
     return "microsoft" in platform.uname().release.lower()
 
+def print_info(msg):
+    print(f"[INFO] {msg}")
+
+def print_warning(msg):
+    print(f"[WARNING] {msg}")
+
 def detect_os():
     os_type = platform.system()
-    distro = ""
+    full_info = ""
 
     if os_type == "Linux":
         try:
-            result = subprocess.run(["lsb_release", "-d"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            result = subprocess.run(["lsb_release", "-a"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             if result.returncode == 0:
-                output = result.stdout.strip()
-                match = re.search(r'Description:\s*(.*)', output)
-                if match:
-                    distro = match.group(1)
+                full_info = result.stdout.strip()
             else:
-                raise Exception("lsb_release not available")
+                raise Exception("lsb_release -a failed")
         except Exception:
             try:
                 if os.path.exists("/etc/os-release"):
                     with open("/etc/os-release", "r") as f:
-                        data = f.read()
-                        match = re.search(r'^PRETTY_NAME="?([^"\n]*)"?', data, re.MULTILINE)
-                        if match:
-                            distro = match.group(1)
+                        full_info = f.read().strip()
+                else:
+                    full_info = "Unknown Linux distribution: /etc/os-release not found"
             except Exception as e:
-                print_warning(f"Failed to detect distro: {e}")
-                distro = "unknown"
+                print_warning(f"Failed to detect Linux distribution details: {e}")
+                full_info = "unknown"
     elif os_type == "Windows":
-        distro = "windows"
+        full_info = "Windows OS: " + platform.platform()
     else:
-        distro = "unknown"
+        full_info = f"Unsupported OS: {os_type}"
 
-    print_info(f"Detected OS: {os_type}, Distro: {distro}")
-
-    return os_type, distro
+    print_info(f"Detected OS info:\n{full_info}")
+    return os_type, full_info
 
 def get_script_directory():
     return os.path.dirname(os.path.abspath(__file__))
@@ -422,33 +423,39 @@ def install_geant4():
         os.makedirs(build_dir)
 
     os.chdir(build_dir)
-    install_packages(distro, version)  # Pass the Geant4 version here
+    install_packages(distro, version) 
 
     install_path = os.path.join(script_dir, "Geant4", f"geant4-v{version}-install")
     print_info(f"Install path: {install_path}")
 
     instructions = f"""
 [INSTRUCTIONS]
-1. After CMake opens, you'll see: EMPTY CACHE
-   - Press 'c' to configure
-   - Press 'e' to exit the warning
+1. After CMake opens, it’ll greet you with an empty void labeled: EMPTY CACHE
+   - Press 'c' to let it try configuring itself
+   - Press 'e' to tell it, “Yes, I saw the warning, thank you, now go away”
 
-2. Now edit the following settings (use arrow keys to navigate):
-   - First, go to CMAKE_INSTALL_PREFIX, press Enter,
-     then paste the following path using Shift+Ctrl+V:
-       {install_path}
-     Press Enter again. If it updates from /usr/local, it's set.
+2. Now tweak the settings like a responsible adult (use arrow keys to move around):
+    – First stop: CMAKE_INSTALL_PREFIX. Hit Enter,
+      then paste the path you actually want (Shift+Ctrl+V — not rocket science):
+    	{install_path}
+      Hit Enter again. If it stops saying /usr/local, congrats, it worked.
 
-3. Turn ON (ideal settings):
+3. Time to flip a few switches (don’t worry, no electrocution):
+     Turn these ON unless you hate yourself later:
    - GEANT4_INSTALL_DATA
    - GEANT4_USE_OPENGL_X11
    - GEANT4_USE_QT
    - GEANT4_USE_RAYTRACER_X11
-   (You can enable more features if desired.)
+   (Feel free to turn on more — if you know what you’re doing or like surprises.)
 
-4. Press 'c' again to configure. Repeat until 'g' is available.
-5. Press 'g' to generate the Makefile.
-6. After closing CMake, return to the terminal to continue the installation.
+4. Press 'c' again to configure your changes.
+   - Keep pressing until it finally stops complaining and gives you a 'g'.
+
+5. Smash 'g' to generate the Makefile.
+   - That’s the thing that tells your computer how to build all this magic.
+
+6. CMake will now vanish like a drama queen exiting stage left.
+   - Get back to your terminal and continue the ride.
     """
 
     with open('geant4_install_instructions.txt', 'w') as f:
@@ -499,7 +506,6 @@ def install_geant4():
         geant4_env_script = os.path.join(install_path, "bin", "geant4.sh")
 
         try:
-            # Copy example B1 to home directory
             print_info("Copying Example B1 to a writable directory...")
             if os.path.exists(user_example_path):
                 shutil.rmtree(user_example_path)
@@ -508,12 +514,10 @@ def install_geant4():
             os.makedirs(build_path, exist_ok=True)
             os.chdir(build_path)
 
-            # Run cmake and make
             cmake_command = f"cmake -DGeant4_DIR={geant4_cmake_dir} .."
             run_command(cmake_command, "Configuring Example B1")
             run_command(f"make -j{cores}", "Building Example B1")
 
-            # Run the example with environment sourced
             print_info("Running Example B1...")
             subprocess.run(f"bash -c 'source {geant4_env_script} && ./exampleB1'", shell=True, check=True)
             print_success("Example B1 ran successfully. Geant4 is working.")
