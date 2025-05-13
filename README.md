@@ -75,12 +75,12 @@ Here’s a sneak peek of what you’ll see as the script runs:
 
 | Step | Screenshot |
 |------|------------|
-| Script starts running | ![Step 1](screenshots/step1.png) |
-| Downloads the Geant4 source | ![Step 2](screenshots/step2.png) |
-| Opens a short text guide to walk you through CMake config | ![Step 3](screenshots/step3.png) |
-| Compiling and installing (this takes a while) | ![Step 4](screenshots/step4.png) |
-| Done! Geant4 is installed and ready to use | ![Step 5](screenshots/step5.png) |
-| Run B1 example to verify installation | ![B1 Example Screenshot](screenshots/b1_example.png) |
+| Script starts running | ![Step 1](Screenshot/step1.png) |
+| Downloads the Geant4 source | ![Step 2](Screenshot/step2.png) |
+| Opens a short text guide to walk you through CMake config | ![Step 3](Screenshot/step3.png) |
+| Compiling and installing (this takes a while) | ![Step 4](Screenshot/step4.png) |
+| Done! Geant4 is installed and ready to use | ![Step 5](Screenshot/step5.png) |
+| Run B1 example to verify installation | ![B1 Example Screenshot](Screenshot/b1_example.png) |
 
 ##Troubleshooting
 If you run into any issues during installation, here are a few things to check:
