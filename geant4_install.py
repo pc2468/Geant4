@@ -246,11 +246,7 @@ def detect_geant4_version(source_dir):
         return None
 
 def get_latest_geant4_version():
-    headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-        "Referer": "https://geant4.web.cern.ch/"
-    }
+    headers = {"User-Agent": "Mozilla/5.0"}
 
     try:
         response = requests.get("https://gitlab.cern.ch/geant4/geant4/-/tags", headers=headers)
@@ -271,13 +267,32 @@ def get_latest_geant4_version():
             try:
                 choice = int(input("Choose a version to install (1-5): ").strip())
                 if 1 <= choice <= 5:
-                    return versions[choice - 1]
+                    selected = versions[choice - 1]
+
+                    tarball_url = f"https://gitlab.cern.ch/geant4/geant4/-/archive/v{selected}/geant4-v{selected}.tar.gz"
+
+                    print_info(f"Checking if tarball exists: {tarball_url}")
+                    test_response = requests.head(tarball_url)
+
+                    if test_response.status_code != 200:
+                        print_warning(f"Could not find source tarball for v{selected}.")
+                        print_warning("This probably means it's not released yet.")
+                        print_action("Check your version or pick an older stable version.")
+                        try_again = input("Do you want to choose a different version? [Y/n]: ").strip().lower()
+                        if try_again != "n":
+                            continue
+                        else:
+                            sys.exit("Aborted by user.")
+
+                    return selected
+
             except ValueError:
                 pass
             print_warning("Invalid input. Try again.")
     except requests.exceptions.RequestException as e:
         print_error(f"Failed to retrieve Geant4 versions: {e}")
         sys.exit(1)
+
 
 def install_packages(distro, geant_version):
     distro_lower = distro.lower()
