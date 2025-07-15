@@ -1,11 +1,11 @@
-# 🚑 Geant4 Manual Dataset Fix
+# Geant4 Manual Dataset Fix
 
 Sometimes Geant4 loves to ruin your day by failing to download its datasets during `make -j12`.  
 Here’s how to outsmart it by doing the work manually — old-school style.
 
 ---
 
-## 📌 Manual Fix Steps
+## Manual Fix Steps
 
 **1️⃣ Download the datasets manually**  
 - Find every required dataset file (.tar.gz).  
@@ -31,8 +31,8 @@ Here’s how to outsmart it by doing the work manually — old-school style.
 
 ---
 
-## ✅ Done!
+## Done!
 
 If you did all this, Geant4 should stop complaining, and your build should finish without dataset drama.
 
-Happy simulating! 🚀
+Happy simulating!
