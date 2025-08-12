@@ -1,5 +1,9 @@
 #!/bin/bash
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+cd "$SCRIPT_DIR"
+
 is_installed() {
   dpkg-query -l "$1" &>/dev/null || rpm -q "$1" &>/dev/null || pacman -Qs "$1" &>/dev/null || zypper se -i "$1" &>/dev/null
 }
@@ -124,7 +128,6 @@ setup_python_env() {
 install_python3
 install_git
 setup_python_env
-
 
 echo "Running Geant4 installation script..."
 ./geant4_env/bin/python geant4_install.py
