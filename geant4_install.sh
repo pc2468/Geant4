@@ -1,7 +1,7 @@
 #!/bin/bash
 
 is_installed() {
-  dpkg-query -l "$1" &>/dev/null || rpm -q "$1" &>/dev/null || pacman -Qs "$1" &>/dev/null
+  dpkg-query -l "$1" &>/dev/null || rpm -q "$1" &>/dev/null || pacman -Qs "$1" &>/dev/null || zypper se -i "$1" &>/dev/null
 }
 
 get_installed_python_version() {
@@ -11,13 +11,13 @@ get_installed_python_version() {
 update_python3() {
   echo "Updating Python3..."
   if [ -x "$(command -v apt-get)" ]; then
-    sudo apt-get update && sudo apt-get install --only-upgrade python3
+    sudo apt-get update && sudo apt-get install --only-upgrade python3 -y
   elif [ -x "$(command -v dnf)" ]; then
-    sudo dnf upgrade python3
+    sudo dnf upgrade python3 -y
   elif [ -x "$(command -v pacman)" ]; then
-    sudo pacman -Syu python
+    sudo pacman -Syu python --noconfirm
   elif [ -x "$(command -v zypper)" ]; then
-    sudo zypper update python3
+    sudo zypper update python3 -y
   else
     echo "Unsupported package manager. Please update Python3 manually."
     exit 1
@@ -37,7 +37,7 @@ install_python3() {
     elif [ -x "$(command -v dnf)" ]; then
       latest_version=$(dnf info python3 | grep 'Version' | awk '{print $3}')
     elif [ -x "$(command -v pacman)" ]; then
-      latest_version=$(pacman -Qi python | grep 'Version' | awk '{print $3}')
+      latest_version=$(pacman -Si python | grep 'Version' | awk '{print $3}')
     elif [ -x "$(command -v zypper)" ]; then
       latest_version=$(zypper info python3 | grep 'Version' | awk '{print $3}')
     else
@@ -62,13 +62,13 @@ install_python3() {
   else
     echo "Python3 is not installed. Installing..."
     if [ -x "$(command -v apt-get)" ]; then
-      sudo apt-get update && sudo apt-get install python3
+      sudo apt-get update && sudo apt-get install python3 -y
     elif [ -x "$(command -v dnf)" ]; then
-      sudo dnf install python3
+      sudo dnf install python3 -y
     elif [ -x "$(command -v pacman)" ]; then
-      sudo pacman -S python
+      sudo pacman -S python --noconfirm
     elif [ -x "$(command -v zypper)" ]; then
-      sudo zypper install python3
+      sudo zypper install python3 -y
     else
       echo "Unsupported package manager. Please install Python3 manually."
       exit 1
@@ -83,13 +83,13 @@ install_git() {
   else
     echo "Git is not installed. Installing..."
     if [ -x "$(command -v apt-get)" ]; then
-      sudo apt-get update && sudo apt-get install git
+      sudo apt-get update && sudo apt-get install git -y
     elif [ -x "$(command -v dnf)" ]; then
-      sudo dnf install git
+      sudo dnf install git -y
     elif [ -x "$(command -v pacman)" ]; then
-      sudo pacman -S git
+      sudo pacman -S git --noconfirm
     elif [ -x "$(command -v zypper)" ]; then
-      sudo zypper install git
+      sudo zypper install git -y
     else
       echo "Unsupported package manager. Please install Git manually."
       exit 1
@@ -97,8 +97,28 @@ install_git() {
   fi
 }
 
+install_python_packages() {
+  echo "Installing Python packages..."
+  if ! python3 -m pip install --upgrade pip &>/dev/null; then
+    echo "pip for Python3 is not installed. Installing..."
+    if [ -x "$(command -v apt-get)" ]; then
+      sudo apt-get install python3-pip -y
+    elif [ -x "$(command -v dnf)" ]; then
+      sudo dnf install python3-pip -y
+    elif [ -x "$(command -v pacman)" ]; then
+      sudo pacman -S python-pip --noconfirm
+    elif [ -x "$(command -v zypper)" ]; then
+      sudo zypper install python3-pip -y
+    fi
+  fi
+
+  echo "Installing 'requests' and 'colorama' Python modules..."
+  python3 -m pip install requests colorama
+}
+
 install_python3
 install_git
+install_python_packages
 
 echo "Downloading required Geant4 files..."
 curl -fsSL https://github.com/pc2468/Geant4/raw/main/install_geant4.sh -o install_geant4.sh
