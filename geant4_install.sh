@@ -121,7 +121,6 @@ setup_python_env() {
   echo "Python virtual environment configured and activated."
 }
 
-
 install_python3
 install_git
 setup_python_env
