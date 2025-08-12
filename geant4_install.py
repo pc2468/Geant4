@@ -98,47 +98,60 @@ def detect_os():
     os_type = platform.system()
     full_info = ""
 
+    def try_install(pkg_name):
+        """Try to install a package based on available package manager."""
+        if shutil.which("apt"):
+            subprocess.run(["sudo", "apt", "update", "-y"], check=False)
+            subprocess.run(["sudo", "apt", "install", "-y", pkg_name], check=False)
+        elif shutil.which("pacman"):
+            subprocess.run(["sudo", "pacman", "-Sy", "--noconfirm", pkg_name], check=False)
+        elif shutil.which("dnf"):
+            subprocess.run(["sudo", "dnf", "install", "-y", pkg_name], check=False)
+        elif shutil.which("zypper"):
+            subprocess.run(["sudo", "zypper", "install", "-y", pkg_name], check=False)
+        else:
+            print_warning("No supported package manager found. Cannot install automatically.")
+
     if os_type == "Linux":
         try:
             if shutil.which("fastfetch"):
-                result = subprocess.run(
-                    ["fastfetch", "--raw"], capture_output=True, text=True, check=True
-                )
-                full_info = result.stdout.strip()
+                subprocess.run(["fastfetch"])
+                return os_type, "fastfetch"
             elif shutil.which("neofetch"):
-                result = subprocess.run(
-                    ["neofetch", "--off"], capture_output=True, text=True, check=True
-                )
-                full_info = result.stdout.strip()
+                subprocess.run(["neofetch"])
+                return os_type, "neofetch"
             else:
-                try:
-                    result = subprocess.run(
-                        ["lsb_release", "-a"],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        text=True,
-                        check=False
-                    )
-                    if result.returncode == 0:
-                        full_info = result.stdout.strip()
+                print_warning("No fastfetch or neofetch found — installing fastfetch...")
+                try_install("fastfetch")
+                if shutil.which("fastfetch"):
+                    subprocess.run(["fastfetch"])
+                    return os_type, "fastfetch"
+                else:
+                    print_warning("Fastfetch install failed, trying neofetch...")
+                    try_install("neofetch")
+                    if shutil.which("neofetch"):
+                        subprocess.run(["neofetch"])
+                        return os_type, "neofetch"
                     else:
-                        raise FileNotFoundError
-                except (FileNotFoundError, OSError):
-                    if os.path.exists("/etc/os-release"):
-                        with open("/etc/os-release", "r") as f:
-                            full_info = f.read().strip()
-                    else:
-                        full_info = "Linux (unknown distribution)"
+                        print_warning("No tools available. Falling back to basic info.")
+                        if os.path.exists("/etc/os-release"):
+                            with open("/etc/os-release") as f:
+                                print(f.read())
+                        else:
+                            print(platform.platform())
+                        return os_type, "fallback"
         except Exception as e:
-            print_warning(f"Failed to detect Linux distribution details: {e}")
-            full_info = "Linux (detection failed)"
-    elif os_type == "Windows":
-        full_info = "Windows OS: " + platform.platform()
-    else:
-        full_info = f"Unsupported OS: {os_type}"
+            print_warning(f"Failed to run neofetch/fastfetch: {e}")
+            print(platform.platform())
+            return os_type, "error"
 
-    print_info(f"Detected OS info:\n{full_info}")
-    return os_type, full_info
+    elif os_type == "Windows":
+        print("Windows OS:", platform.platform())
+        return os_type, "windows"
+
+    else:
+        print(f"Unsupported OS: {os_type}")
+        return os_type, "unsupported"
 
 
 def detect_geant4_version(source_dir):
@@ -468,4 +481,5 @@ def install_geant4():
 
 if __name__ == "__main__":
     install_geant4()
+
 
