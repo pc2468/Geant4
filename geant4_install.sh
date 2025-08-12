@@ -121,15 +121,11 @@ setup_python_env() {
   echo "Python virtual environment configured and activated."
 }
 
+
 install_python3
 install_git
 setup_python_env
 
-echo "Downloading required Geant4 files..."
-curl -fsSL https://github.com/pc2468/Geant4/raw/main/install_geant4.sh -o install_geant4.sh
-curl -fsSL https://github.com/pc2468/Geant4/raw/main/geant4_install.py -o geant4_install.py
-
-chmod +x install_geant4.sh
 
 echo "Running Geant4 installation script..."
 ./geant4_env/bin/python geant4_install.py
