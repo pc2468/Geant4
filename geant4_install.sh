@@ -39,7 +39,7 @@ install_python3() {
       latest_version=$(apt-cache policy python3 | grep 'Candidate' | awk '{print $2}')
     elif [ -x "$(command -v dnf)" ]; then
       latest_version=$(dnf info python3 | grep 'Version' | awk '{print $3}')
-    elif [ [ -x "$(command -v pacman)" ]]; then
+    elif [ -x "$(command -v pacman)" ]; then  # Corrected line
       latest_version=$(pacman -Si python | grep 'Version' | awk '{print $3}')
     elif [ -x "$(command -v zypper)" ]; then
       latest_version=$(zypper info python3 | grep 'Version' | awk '{print $3}')
