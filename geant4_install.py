@@ -13,66 +13,18 @@ import tempfile
 import re
 import requests
 from urllib.parse import urljoin
+import io
 
-def check_and_fix_permissions(path):
-    if not os.access(path, os.W_OK):
-        print(f"Write permission denied for {path}. Trying to change ownership...")
-        try:
-            subprocess.check_call(["sudo", "chown", "-R", f"{os.getenv('USER')}:{os.getenv('USER')}", path])
-            print(f"Ownership of {path} successfully changed.")
-        except subprocess.CalledProcessError:
-            print(f"Failed to change ownership of {path}. Please ensure you have the correct permissions.")
-            sys.exit(1)
-
-def ensure_xdg_open_installed():
-    if shutil.which("xdg-open") is None:
-        print("xdg-open not found. Installing xdg-utils...")
-        try:
-            subprocess.run(["sudo", "apt", "update"], check=True)
-            subprocess.run(["sudo", "apt", "install", "-y", "xdg-utils"], check=True)
-            if shutil.which("xdg-open") is None:
-                print("xdg-open still not found after install. Exiting.")
-                sys.exit(1)
-            else:
-                print("xdg-utils installed successfully.")
-        except subprocess.CalledProcessError as e:
-            print("Failed to install xdg-utils. Error:", e)
-            sys.exit(1)
-
-def ensure_basic_utilities():
-    try:
-        from colorama import Fore, Style, init
-    except ImportError:
-        print("[INFO] colorama not found. Attempting to install required packages...")
-
-        package_managers = {
-            "apt": "sudo apt update && sudo apt install -y python3-colorama lsb-release",
-            "dnf": "sudo dnf install -y python3-colorama redhat-lsb-core",
-            "yum": "sudo yum install -y python3-colorama redhat-lsb-core",
-            "pacman": "sudo pacman -Sy --noconfirm python-colorama lsb-release",
-            "zypper": "sudo zypper install -y python3-colorama lsb-release"
-        }
-
-        for manager, command in package_managers.items():
-            if subprocess.call(f"command -v {manager}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0:
-                try:
-                    subprocess.check_call(command, shell=True)
-                    os.execv(sys.executable, [sys.executable] + sys.argv)
-                except subprocess.CalledProcessError:
-                    continue
-
-        print("\033[95m[ACTION REQUIRED]\033[0m Install colorama and lsb-release manually:")
-        print("  sudo apt install python3-colorama lsb-release")
-        print("  sudo dnf install python3-colorama redhat-lsb-core")
-        print("  sudo yum install python3-colorama redhat-lsb-core")
-        print("  sudo pacman -Sy python-colorama lsb-release")
-        sys.exit(1)
-
+try:
+    from colorama import Fore, Style, init
     init(autoreset=True)
+except ImportError:
+    print("WARNING: colorama not found. Please install with 'pip install colorama' for colored output.")
+    class DummyColorama:
+        def __getattr__(self, name):
+            return ""
+    Fore = Style = DummyColorama()
 
-ensure_basic_utilities()
-
-from colorama import Fore, Style
 def print_message(tag, color, message):
     print(f"{color}[{tag}]{Style.RESET_ALL} {message}")
 
@@ -119,12 +71,29 @@ def run_command(command, description="", interactive=False, silent=False):
 def is_wsl():
     return "microsoft" in platform.uname().release.lower()
 
-def print_info(msg):
-    print(f"[INFO] {msg}")
+def get_script_directory():
+    return os.path.dirname(os.path.abspath(__file__))
 
-def print_warning(msg):
-    print(f"[WARNING] {msg}")
+def get_cpu_cores():
+    print_info("(If you don't know your CPU core count, open a new terminal and run: `nproc`, then enter the number here.)")
+    while True:
+        try:
+            cores = int(input("Enter the number of CPU cores for compilation: ").strip())
+            if cores > 0:
+                return cores
+        except ValueError:
+            pass
+        print_warning("Invalid input. Try again.")
 
+def prompt(message):
+    try:
+        if os.isatty(sys.stdin.fileno()):
+            return input(message)
+        else:
+            return 'y'
+    except (io.UnsupportedOperation, AttributeError):
+        return 'y'
+    
 def detect_os():
     os_type = platform.system()
     full_info = ""
@@ -132,11 +101,12 @@ def detect_os():
     if os_type == "Linux":
         try:
             if shutil.which("fastfetch"):
-                result = subprocess.run(["fastfetch"], capture_output=True, text=True, check=True)
+                result = subprocess.run(["fastfetch", "--raw"], capture_output=True, text=True, check=True)
                 full_info = result.stdout.strip()
             elif shutil.which("neofetch"):
                 result = subprocess.run(["neofetch", "--off"], capture_output=True, text=True, check=True)
                 full_info = result.stdout.strip()
+            # Fallback to lsb_release or os-release
             else:
                 result = subprocess.run(["lsb_release", "-a"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 if result.returncode == 0:
@@ -154,65 +124,6 @@ def detect_os():
 
     print_info(f"Detected OS info:\n{full_info}")
     return os_type, full_info
-
-def get_cpu_cores():
-    print_info("(If you don't know your CPU core count, open a new terminal and run: `nproc`, then enter the number here.)")
-    while True:
-        try:
-            cores = int(input("Enter the number of CPU cores for compilation: ").strip())
-            if cores > 0:
-                return cores
-        except ValueError:
-            pass
-        print_warning("Invalid input. Try again.")
-
-def install_packages(distro):
-    distro_lower = distro.lower()
-
-    if "arch" in distro_lower:
-        pkg_cmd = "sudo pacman -Sy --noconfirm ..."
-    elif any(name in distro_lower for name in ["ubuntu", "debian", "mint"]):
-        pkg_cmd = "sudo apt update && sudo apt install -y ..."
-    elif "opensuse" in distro_lower:
-        pkg_cmd = "sudo zypper install -y ..."
-    elif any(name in distro_lower for name in ["rocky", "rhel"]):
-        pkg_cmd = "sudo dnf install -y ..."
-    elif "fedora" in distro_lower:
-        if platform.release().startswith("41"):
-            pkg_cmd = "sudo dnf5 install -y ..."
-        else:
-            pkg_cmd = "sudo dnf install -y ..."
-    else:
-        print_warning("Distro not recognized. Please install dependencies manually.")
-        return
-    run_command(pkg_cmd, "Installing required packages", interactive=True)
-
-def check_dependencies():
-    missing = []
-
-    if run_command("which qmake", silent=True) != 0:
-        missing.append("Qt5 (qmake)")
-
-    if run_command("ldconfig -p | grep libGL", silent=True) != 0:
-        missing.append("OpenGL (libGL)")
-
-    if missing:
-        print_error(f"Missing dependencies: {', '.join(missing)}")
-        print_action("You can choose to install them manually later.")
-
-        choice = prompt("Do you want to [C]ontinue or [A]bort? [c/a] ").strip().lower()
-        if choice == "a":
-            sys.exit("Aborted by user due to missing dependencies.")
-        else:
-            print_warning("Continuing despite missing dependencies.")
-    else:
-        print_success("All required dependencies are present.")
-
-def prompt(message):
-    if args.non_interactive or args.yes_to_all:
-        return 'c'
-    return input(message)
-
 
 def detect_geant4_version(source_dir):
     import fnmatch
@@ -291,83 +202,83 @@ def get_latest_geant4_version():
         print_error(f"Failed to retrieve Geant4 versions: {e}")
         sys.exit(1)
 
-
 def install_packages(distro, geant_version):
     distro_lower = distro.lower()
+    
+    package_map = {
+        "arch": {
+            "base": ["cmake", "gcc", "binutils", "libx11", "libxpm", "libxft", "libxext", "glew", "libjpeg-turbo", "libpng", "libtiff", "giflib", "libxml2", "openssl", "fftw", "qt5-base", "qt5-tools", "mesa", "glu", "libxmu"],
+            "addons": {
+                "11": ["tbb"]
+            },
+            "install_cmd": "sudo pacman -Sy --noconfirm"
+        },
+        "debian": {
+            "base": ["cmake-curses-gui", "cmake", "g++", "gcc", "binutils", "libx11-dev", "libxpm-dev", "libxft-dev", "libxext-dev", "libglew-dev", "libjpeg-dev", "libpng-dev", "libtiff-dev", "libgif-dev", "libxml2-dev", "libssl-dev", "libfftw3-dev", "qtbase5-dev", "qtchooser", "qttools5-dev-tools", "qt3d5-dev", "libgl1-mesa-dev", "libglu1-mesa-dev", "libxmu-dev"],
+            "addons": {
+                "11": ["libtbb-dev"]
+            },
+            "install_cmd": "sudo apt update && sudo apt install -y"
+        },
+        "opensuse": {
+            "base": ["cmake", "cmake-curses-gui", "cmake-gui", "gcc", "gcc-c++", "libX11-devel", "libXpm-devel", "libXft-devel", "libXext-devel", "glew-devel", "libjpeg-devel", "libpng-devel", "libtiff-devel", "giflib-devel", "libxml2-devel", "libopenssl-devel", "fftw3-devel", "libqt5-qtbase-devel", "libqt5-qttools-devel", "libqt5-qt3d-devel", "Mesa-libGL-devel", "Mesa-libGLU-devel", "libXmu-devel"],
+            "addons": {
+                "11": ["tbb-devel"]
+            },
+            "install_cmd": "sudo zypper install -y"
+        },
+        "rhel": {
+            "base": ["cmake", "cmake-curses-gui", "cmake-gui", "gcc", "gcc-c++", "binutils", "libX11-devel", "libXpm-devel", "libXft-devel", "libXext-devel", "glew-devel", "libjpeg-turbo-devel", "libpng-devel", "libtiff-devel", "giflib-devel", "libxml2-devel", "openssl-devel", "fftw-devel", "qt5-qtbase-devel", "qt5-qttools-devel", "qt5-qt3d-devel", "mesa-libGL-devel", "mesa-libGLU-devel", "libXmu-devel"],
+            "addons": {
+                "11": ["tbb-devel"]
+            },
+            "install_cmd": "sudo dnf install -y"
+        },
+        "fedora": {
+            "base": ["cmake", "cmake-curses-gui", "cmake-gui", "gcc", "gcc-c++", "binutils", "qt5-qtbase-devel", "qt5-qttools-devel", "qt5-qt3d-devel", "glew-devel", "libjpeg-turbo-devel", "libpng-devel", "libtiff-devel", "giflib-devel", "libxml2-devel", "openssl-devel", "fftw-devel", "mesa-libGL-devel", "mesa-libGLU-devel", "libXmu-devel"],
+            "addons": {
+                "11": ["tbb-devel"]
+            },
+            "install_cmd": "sudo dnf install -y" 
+        }
+    }
 
     if "arch" in distro_lower:
         family = "arch"
-        base_packages = [
-            "cmake", "gcc", "binutils",
-            "libx11", "libxpm", "libxft", "libxext", "glew",
-            "libjpeg-turbo", "libpng", "libtiff", "giflib",
-            "libxml2", "openssl", "fftw",
-            "qt5-base", "qt5-tools", "mesa", "glu", "libxmu"
-        ]
-        install_cmd = "sudo pacman -Sy --noconfirm"
     elif any(name in distro_lower for name in ["ubuntu", "debian", "mint"]):
         family = "debian"
-        base_packages = [
-            "cmake-curses-gui", "cmake", "g++", "gcc", "binutils",
-            "libx11-dev", "libxpm-dev", "libxft-dev", "libxext-dev",
-            "libglew-dev", "libjpeg-dev", "libpng-dev", "libtiff-dev", "libgif-dev",
-            "libxml2-dev", "libssl-dev", "libfftw3-dev",
-            "qtbase5-dev", "qtchooser", "qttools5-dev-tools", "qt3d5-dev",
-            "libgl1-mesa-dev", "libglu1-mesa-dev", "libxmu-dev"
-        ]
-        install_cmd = "sudo apt update && sudo apt install -y"
     elif "opensuse" in distro_lower:
         family = "opensuse"
-        base_packages = [
-            "cmake", "cmake-curses-gui", "cmake-gui", "gcc", "gcc-c++",
-            "libX11-devel", "libXpm-devel", "libXft-devel", "libXext-devel",
-            "glew-devel", "libjpeg-devel", "libpng-devel", "libtiff-devel", "giflib-devel",
-            "libxml2-devel", "libopenssl-devel", "fftw3-devel",
-            "libqt5-qtbase-devel", "libqt5-qttools-devel", "libqt5-qt3d-devel",
-            "Mesa-libGL-devel", "Mesa-libGLU-devel", "libXmu-devel"
-        ]
-        install_cmd = "sudo zypper install -y"
     elif any(name in distro_lower for name in ["rocky", "rhel"]):
         family = "rhel"
-        base_packages = [
-            "cmake", "cmake-curses-gui", "cmake-gui", "gcc", "gcc-c++", "binutils",
-            "libX11-devel", "libXpm-devel", "libXft-devel", "libXext-devel",
-            "glew-devel", "libjpeg-turbo-devel", "libpng-devel", "libtiff-devel", "giflib-devel",
-            "libxml2-devel", "openssl-devel", "fftw-devel",
-            "qt5-qtbase-devel", "qt5-qttools-devel", "qt5-qt3d-devel",
-            "mesa-libGL-devel", "mesa-libGLU-devel", "libXmu-devel"
-        ]
-        install_cmd = "sudo dnf install -y"
     elif "fedora" in distro_lower:
         family = "fedora"
-        base_packages = [
-            "cmake", "cmake-curses-gui", "cmake-gui", "gcc", "gcc-c++", "binutils",
-            "qt5-qtbase-devel", "qt5-qttools-devel", "qt5-qt3d-devel",
-            "glew-devel", "libjpeg-turbo-devel", "libpng-devel", "libtiff-devel", "giflib-devel",
-            "libxml2-devel", "openssl-devel", "fftw-devel",
-            "mesa-libGL-devel", "mesa-libGLU-devel", "libXmu-devel"
-        ]
-        install_cmd = "sudo dnf5 install -y" if platform.release().startswith("41") else "sudo dnf install -y"
     else:
         print_warning("Distro not recognized. Please install dependencies manually.")
         return
 
-    version_pkg_addons = {
-        "11.2": {
-            "debian": ["libtbb-dev"],
-            "arch": ["tbb"],
-            "fedora": ["tbb-devel"],
-            "rhel": ["tbb-devel"],
-            "opensuse": ["tbb-devel"]
-        },
-    }
+    major_version = geant_version.split('.')[0]
+    distro_config = package_map.get(family, {})
+    base_packages = distro_config.get("base", [])
+    extra_packages = distro_config.get("addons", {}).get(major_version, [])
+    install_cmd = distro_config.get("install_cmd")
 
-    extra_packages = version_pkg_addons.get(geant_version, {}).get(family, [])
     all_packages = base_packages + extra_packages
 
-    pkg_cmd = f"{install_cmd} {' '.join(all_packages)}"
+    if not all_packages:
+        print_warning(f"No specific packages found for {distro} and Geant4 v{major_version}. Please install manually.")
+        return
+    
+    print_action("The following packages will be installed to meet Geant4's dependencies:")
+    print(" ".join(all_packages))
+    
+    choice = prompt("Do you want to proceed with the automatic installation? [y/n] ")
+    if choice.lower() == 'y':
+        pkg_cmd = f"{install_cmd} {' '.join(all_packages)}"
+        run_command(pkg_cmd, "Installing required packages", interactive=True)
+    else:
+        print_warning("Skipping automatic dependency installation. Please install manually.")
 
-    run_command(pkg_cmd, "Installing dependencies", interactive=True)
 
 def verify_geant4_install(install_path):
     geant4_config = os.path.join(install_path, "bin", "geant4-config")
@@ -393,7 +304,7 @@ def install_geant4():
         print_warning("Script only supports Linux or WSL. Windows script is under development.")
         sys.exit(1)
 
-    script_dir = get_script_directory()
+    script_dir = os.path.dirname(os.path.abspath(__file__))
     geant4_dir = os.path.join(script_dir, "Geant4")
     os.makedirs(geant4_dir, exist_ok=True)
     os.chdir(geant4_dir)
@@ -450,7 +361,7 @@ def install_geant4():
 2. Now tweak the settings like a responsible adult (use arrow keys to move around):
     – First stop: CMAKE_INSTALL_PREFIX. Hit Enter,
       then paste the path you actually want (Shift+Ctrl+V — not rocket science):
-    	{install_path}
+      {install_path}
       Hit Enter again. If it stops saying /usr/local, congrats, it worked.
 
 3. Time to flip a few switches (don’t worry, no electrocution):
@@ -541,4 +452,3 @@ def install_geant4():
 
 if __name__ == "__main__":
     install_geant4()
-
