@@ -31,12 +31,11 @@ install_python3() {
     current_version=$(get_installed_python_version)
     echo "Current Python3 version: $current_version"
 
-    # Find latest version
     if [ -x "$(command -v apt-get)" ]; then
       latest_version=$(apt-cache policy python3 | grep 'Candidate' | awk '{print $2}')
     elif [ -x "$(command -v dnf)" ]; then
       latest_version=$(dnf info python3 | grep 'Version' | awk '{print $3}')
-    elif [ -x "$(command -v pacman)" ]; then
+    elif [ [ -x "$(command -v pacman)" ]]; then
       latest_version=$(pacman -Si python | grep 'Version' | awk '{print $3}')
     elif [ -x "$(command -v zypper)" ]; then
       latest_version=$(zypper info python3 | grep 'Version' | awk '{print $3}')
@@ -97,28 +96,34 @@ install_git() {
   fi
 }
 
-install_python_packages() {
-  echo "Installing Python packages..."
-  if ! python3 -m pip install --upgrade pip &>/dev/null; then
-    echo "pip for Python3 is not installed. Installing..."
+setup_python_env() {
+  echo "Setting up a Python virtual environment for Geant4 installation."
+  if ! python3 -m venv --help &>/dev/null; then
+    echo "venv module not found. Installing python3-venv..."
     if [ -x "$(command -v apt-get)" ]; then
-      sudo apt-get install python3-pip -y
+      sudo apt-get update && sudo apt-get install python3-venv -y
     elif [ -x "$(command -v dnf)" ]; then
-      sudo dnf install python3-pip -y
+      sudo dnf install python3-venv -y
     elif [ -x "$(command -v pacman)" ]; then
-      sudo pacman -S python-pip --noconfirm
+      sudo pacman -S python-virtualenv --noconfirm
     elif [ -x "$(command -v zypper)" ]; then
-      sudo zypper install python3-pip -y
+      sudo zypper install python3-venv -y
     fi
   fi
 
-  echo "Installing 'requests' and 'colorama' Python modules..."
-  python3 -m pip install requests colorama
+  python3 -m venv geant4_env
+  
+  source geant4_env/bin/activate
+  
+  echo "Installing 'requests' and 'colorama' modules in the virtual environment..."
+  pip install requests colorama
+  
+  echo "Python virtual environment configured and activated."
 }
 
 install_python3
 install_git
-install_python_packages
+setup_python_env
 
 echo "Downloading required Geant4 files..."
 curl -fsSL https://github.com/pc2468/Geant4/raw/main/install_geant4.sh -o install_geant4.sh
@@ -127,4 +132,6 @@ curl -fsSL https://github.com/pc2468/Geant4/raw/main/geant4_install.py -o geant4
 chmod +x install_geant4.sh
 
 echo "Running Geant4 installation script..."
-python3 geant4_install.py
+./geant4_env/bin/python geant4_install.py
+
+deactivate
