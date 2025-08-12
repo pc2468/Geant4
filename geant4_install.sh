@@ -1,7 +1,6 @@
 #!/bin/bash
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-
 cd "$SCRIPT_DIR"
 
 is_installed() {
@@ -39,8 +38,8 @@ install_python3() {
       latest_version=$(apt-cache policy python3 | grep 'Candidate' | awk '{print $2}')
     elif [ -x "$(command -v dnf)" ]; then
       latest_version=$(dnf info python3 | grep 'Version' | awk '{print $3}')
-    elif [ -x "$(command -v pacman)" ]; then  # Corrected line
-      latest_version=$(pacman -Si python | grep 'Version' | awk '{print $3}')
+    elif [ -x "$(command -v pacman)" ]; then
+      latest_version=$(pacman -Si python | awk '/Version/ {print $3}' | cut -d'-' -f1)
     elif [ -x "$(command -v zypper)" ]; then
       latest_version=$(zypper info python3 | grep 'Version' | awk '{print $3}')
     else
@@ -50,7 +49,7 @@ install_python3() {
 
     echo "Latest Python3 version available: $latest_version"
 
-    if [ "$current_version" != "$latest_version" ]; then
+    if [ -n "$latest_version" ] && [ "$current_version" != "$latest_version" ]; then
       echo "A newer Python3 version is available."
       read -p "Would you like to update Python3 now? (y/n): " choice
       if [[ "$choice" == "y" || "$choice" == "Y" ]]; then
@@ -116,18 +115,28 @@ setup_python_env() {
   fi
 
   python3 -m venv geant4_env
-  
   source geant4_env/bin/activate
-  
+
   echo "Installing 'requests' and 'colorama' modules in the virtual environment..."
+  pip install --upgrade pip
   pip install requests colorama
-  
+
   echo "Python virtual environment configured and activated."
 }
 
 install_python3
 install_git
 setup_python_env
+
+# Download geant4_install.py if missing
+if [ ! -f geant4_install.py ]; then
+  echo "Downloading geant4_install.py..."
+  curl -fsSL -o geant4_install.py https://raw.githubusercontent.com/pc2468/Geant4/main/geant4_install.py || {
+    echo "Failed to download geant4_install.py. Please check the URL."
+    deactivate
+    exit 1
+  }
+fi
 
 echo "Running Geant4 installation script..."
 ./geant4_env/bin/python geant4_install.py
