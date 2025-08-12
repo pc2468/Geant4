@@ -101,22 +101,37 @@ def detect_os():
     if os_type == "Linux":
         try:
             if shutil.which("fastfetch"):
-                result = subprocess.run(["fastfetch", "--raw"], capture_output=True, text=True, check=True)
+                result = subprocess.run(
+                    ["fastfetch", "--raw"], capture_output=True, text=True, check=True
+                )
                 full_info = result.stdout.strip()
             elif shutil.which("neofetch"):
-                result = subprocess.run(["neofetch", "--off"], capture_output=True, text=True, check=True)
+                result = subprocess.run(
+                    ["neofetch", "--off"], capture_output=True, text=True, check=True
+                )
                 full_info = result.stdout.strip()
-            # Fallback to lsb_release or os-release
             else:
-                result = subprocess.run(["lsb_release", "-a"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                if result.returncode == 0:
-                    full_info = result.stdout.strip()
-                else:
-                    with open("/etc/os-release", "r") as f:
-                        full_info = f.read().strip()
+                try:
+                    result = subprocess.run(
+                        ["lsb_release", "-a"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        check=False
+                    )
+                    if result.returncode == 0:
+                        full_info = result.stdout.strip()
+                    else:
+                        raise FileNotFoundError
+                except (FileNotFoundError, OSError):
+                    if os.path.exists("/etc/os-release"):
+                        with open("/etc/os-release", "r") as f:
+                            full_info = f.read().strip()
+                    else:
+                        full_info = "Linux (unknown distribution)"
         except Exception as e:
             print_warning(f"Failed to detect Linux distribution details: {e}")
-            full_info = "unknown"
+            full_info = "Linux (detection failed)"
     elif os_type == "Windows":
         full_info = "Windows OS: " + platform.platform()
     else:
@@ -124,6 +139,7 @@ def detect_os():
 
     print_info(f"Detected OS info:\n{full_info}")
     return os_type, full_info
+
 
 def detect_geant4_version(source_dir):
     import fnmatch
@@ -452,3 +468,4 @@ def install_geant4():
 
 if __name__ == "__main__":
     install_geant4()
+
