@@ -1,25 +1,24 @@
 #!/bin/bash
 set -e
 
-# Detect the directory of this script if it exists on disk.
-# If running via curl, fall back to current working directory.
-if [[ -n "${BASH_SOURCE[0]}" && -f "${BASH_SOURCE[0]}" ]]; then
-  SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &>/dev/null && pwd )"
-else
-  SCRIPT_DIR="$PWD"
-fi
+# Always work in a new "Geant4" folder in the directory where the user runs the script
+INSTALL_DIR="$PWD/Geant4"
 
-cd "$SCRIPT_DIR"
+# Create it if it doesn't exist
+mkdir -p "$INSTALL_DIR"
 
-# 1. Load dependencies.sh (local if present, otherwise download from your repo)
-if [ -f "$SCRIPT_DIR/dependencies.sh" ]; then
-  source "$SCRIPT_DIR/dependencies.sh"
+# Move into it
+cd "$INSTALL_DIR"
+
+# 1. Load dependencies.sh (local if present, otherwise download from repo)
+if [ -f "dependencies.sh" ]; then
+  source "dependencies.sh"
 else
-  echo "dependencies.sh not found locally, downloading from repo..."
-  curl -fsSL -o /tmp/dependencies.sh \
+  echo "dependencies.sh not found, downloading from repo..."
+  curl -fsSL -o dependencies.sh \
     https://raw.githubusercontent.com/pc2468/Geant4/main/dependencies.sh \
     || { echo "Failed to download dependencies.sh"; exit 1; }
-  source /tmp/dependencies.sh
+  source "dependencies.sh"
 fi
 
 # 2. Install all dependencies
