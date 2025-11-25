@@ -106,39 +106,35 @@ install_build_tools() {
 setup_python_env() {
   echo "Setting up a Python virtual environment for Geant4 installation."
 
-  # make sure venv module exists
-  if ! python3 -m venv --help &>/dev/null; then
-    echo "venv module not found. Installing..."
+  if [ -x "$(command -v apt-get)" ]; then
+    sudo apt-get update
 
-    if [ -x "$(command -v apt-get)" ]; then
-      sudo apt-get update
+    # get Python major.minor, e.g. 3.12
+    PYV=$(python3 -V | awk '{print $2}' | cut -d. -f1,2)
 
-      # generic venv package (older Debian/Ubuntu)
-      sudo apt-get install -y python3-venv || true
+    # generic venv package (older Ubuntu/Debian)
+    sudo apt-get install -y python3-venv || true
 
-      # version-specific venv for Python 3.12+ etc.
-      PYV=$(python3 -V | awk '{print $2}' | cut -d. -f1,2)   # e.g. 3.12
-      if apt-cache search "python${PYV}-venv" | grep -q "python${PYV}-venv"; then
-        sudo apt-get install -y "python${PYV}-venv"
-      fi
-
-    elif [ -x "$(command -v dnf)" ]; then
-      sudo dnf install -y python3-venv || true
-
-    elif [ -x "$(command -v pacman)" ]; then
-      # Arch doesn't split venv; python package already contains it.
-      # If it still fails, user has a broken Python.
-      sudo pacman -S --noconfirm python python-virtualenv || true
-
-    elif [ -x "$(command -v zypper)" ]; then
-      sudo zypper install -y python3-venv || true
+    # version-specific venv, e.g. python3.12-venv, if available
+    if apt-cache show "python${PYV}-venv" >/dev/null 2>&1; then
+      sudo apt-get install -y "python${PYV}-venv"
     fi
+
+  elif [ -x "$(command -v dnf)" ]; then
+    sudo dnf install -y python3-venv || true
+
+  elif [ -x "$(command -v pacman)" ]; then
+    # Arch ships venv in main python, but add virtualenv as fallback
+    sudo pacman -S --noconfirm python python-virtualenv || true
+
+  elif [ -x "$(command -v zypper)" ]; then
+    sudo zypper install -y python3-venv || true
   fi
 
-  # create venv
+  # now actually try to create the venv
   if ! python3 -m venv geant4_env; then
     echo "ERROR: python3 -m venv failed even after attempting to install venv support."
-    echo "On Debian/Ubuntu, try: sudo apt install python3-venv python\$(python3 -V | awk '{print \$2}' | cut -d. -f1,2)-venv"
+    echo "On Debian/Ubuntu, try manually: sudo apt install python3-venv python\$(python3 -V | awk '{print \$2}' | cut -d. -f1,2)-venv"
     exit 1
   fi
 
